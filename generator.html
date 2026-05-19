@@ -97,6 +97,11 @@
   }
   .toast.show { opacity: 1; }
   .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .banners { display: flex; flex-direction: column; gap: 8px; }
+  .banner-item { display: flex; align-items: center; gap: 10px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .banner-item:hover { background: #fafafa; }
+  .banner-item img { max-height: 40px; max-width: 120px; display: block; }
+  .banner-item span { font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -130,6 +135,11 @@
 
     <label for="logoSize">Logo size (px)</label>
     <input type="number" id="logoSize" value="90" min="40" max="200">
+
+    <h2 style="margin-top: 24px;">Banners</h2>
+    <div id="banners" class="banners">
+      <div class="hint">Loading banners…</div>
+    </div>
   </div>
 
   <div class="panel">
@@ -151,6 +161,9 @@
 
 <script>
   const LOGO_URL = "https://github.com/karsai5/wtc-signatures/blob/main/wtc-logo-circ-rev-black.png?raw=true";
+  const BANNER_BASE = "https://github.com/karsai5/wtc-signatures/blob/main/banners/";
+  const BANNER_SUFFIX = "?raw=true";
+  const BANNER_API = "https://api.github.com/repos/karsai5/wtc-signatures/contents/banners";
   const fields = ["name","pronouns","company","role","phone","phoneLink","tagline","logoSize"];
   const $ = id => document.getElementById(id);
 
@@ -160,6 +173,23 @@
       .replace(/</g,"&lt;")
       .replace(/>/g,"&gt;")
       .replace(/"/g,"&quot;");
+  }
+
+  const SIG_WIDTH = 500;
+
+  function buildBannerRows() {
+    const checked = Array.from(document.querySelectorAll(".banner-checkbox:checked"));
+    if (!checked.length) return "";
+    return checked.map(cb => {
+      const url = cb.dataset.url;
+      const name = cb.dataset.name;
+      return `
+  <tr>
+    <td colspan="2" style="padding-top: 12px;">
+      <img src="${url}" alt="${escapeHtml(name)}" width="${SIG_WIDTH}" style="display: block; width: 100%; max-width: ${SIG_WIDTH}px; height: auto; border: 0; outline: none; text-decoration: none;">
+    </td>
+  </tr>`;
+    }).join("");
   }
 
   function buildSignature() {
@@ -181,9 +211,11 @@
       ? `<div style="margin-top: 8px; font-style: italic; color: #666666; font-size: 12px;">${tagline}</div>`
       : "";
 
-    return `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; color: #222222; font-size: 14px; line-height: 1.4;">
+    const bannerRows = buildBannerRows();
+
+    return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Arial, Helvetica, sans-serif; color: #222222; font-size: 14px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
   <tr>
-    <td style="vertical-align: middle; padding-right: 16px;">
+    <td width="${logoSize}" style="vertical-align: middle; padding-right: 16px; width: ${logoSize}px;">
       <img src="${logoUrl}" alt="${company}" width="${logoSize}" height="${logoSize}" style="display: block; width: ${logoSize}px; height: ${logoSize}px; border: 0; outline: none; text-decoration: none;">
     </td>
     <td style="vertical-align: middle; border-left: 2px solid #222222; padding-left: 16px;">
@@ -195,7 +227,7 @@
       </div>
       ${taglineHtml}
     </td>
-  </tr>
+  </tr>${bannerRows}
 </table>`;
   }
 
@@ -205,8 +237,34 @@
     $("htmlSource").value = html;
   }
 
+  async function loadBanners() {
+    const container = $("banners");
+    try {
+      const res = await fetch(BANNER_API);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const files = await res.json();
+      const images = files.filter(f => f.type === "file" && /\.(png|jpe?g|gif|webp)$/i.test(f.name));
+      if (!images.length) {
+        container.innerHTML = '<div class="hint">No banners found.</div>';
+        return;
+      }
+      container.innerHTML = images.map(f => {
+        const url = BANNER_BASE + encodeURIComponent(f.name) + BANNER_SUFFIX;
+        return `<label class="banner-item">
+          <input type="checkbox" class="banner-checkbox" data-url="${url}" data-name="${escapeHtml(f.name)}">
+          <img src="${url}" alt="${escapeHtml(f.name)}">
+          <span>${escapeHtml(f.name)}</span>
+        </label>`;
+      }).join("");
+      container.querySelectorAll(".banner-checkbox").forEach(cb => cb.addEventListener("change", render));
+    } catch (e) {
+      container.innerHTML = '<div class="hint">Could not load banners (' + escapeHtml(e.message) + ').</div>';
+    }
+  }
+
   fields.forEach(id => $(id).addEventListener("input", render));
   render();
+  loadBanners();
 
   function showToast() {
     const t = $("toast");
@@ -221,7 +279,7 @@
   });
 
   $("copyRich").addEventListener("click", async () => {
-    const html = buildSignature();
+    const html = $("htmlSource").value;
     // Strip tags for the plain-text fallback
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
