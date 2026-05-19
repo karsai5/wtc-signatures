@@ -128,10 +128,6 @@
     <label for="tagline">Tagline / footer line</label>
     <input type="text" id="tagline" value="~ Respectfully making theatre on Gadigal land ~">
 
-    <label for="logoUrl">Logo URL</label>
-    <input type="url" id="logoUrl" value="https://REPLACE-WITH-HOSTED-URL/wtc-logo-circ-rev-black.png">
-    <div class="hint">Must be a publicly accessible image URL for emails to render the logo.</div>
-
     <label for="logoSize">Logo size (px)</label>
     <input type="number" id="logoSize" value="90" min="40" max="200">
   </div>
@@ -154,7 +150,8 @@
 </div>
 
 <script>
-  const fields = ["name","pronouns","company","role","phone","phoneLink","tagline","logoUrl","logoSize"];
+  const LOGO_URL = "https://github.com/karsai5/wtc-signatures/blob/main/wtc-logo-circ-rev-black.png?raw=true";
+  const fields = ["name","pronouns","company","role","phone","phoneLink","tagline","logoSize"];
   const $ = id => document.getElementById(id);
 
   function escapeHtml(s) {
@@ -173,7 +170,7 @@
     const phone    = escapeHtml($("phone").value);
     const phoneLink= escapeHtml($("phoneLink").value);
     const tagline  = escapeHtml($("tagline").value);
-    const logoUrl  = escapeHtml($("logoUrl").value);
+    const logoUrl  = LOGO_URL;
     const logoSize = parseInt($("logoSize").value, 10) || 90;
 
     const pronounsHtml = pronouns
