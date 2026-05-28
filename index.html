@@ -176,10 +176,16 @@
   }
 
   const SIG_WIDTH = 500;
+  const DEFAULT_SIG_LEFT_STYLING_WIDTH = "width: 130px;"
+  let SIG_LEFT_STYLING_WIDTH = DEFAULT_SIG_LEFT_STYLING_WIDTH;
 
   function buildBannerRows() {
     const checked = Array.from(document.querySelectorAll(".banner-checkbox:checked"));
-    if (!checked.length) return "";
+    if (!checked.length) {
+        SIG_LEFT_STYLING_WIDTH = DEFAULT_SIG_LEFT_STYLING_WIDTH;
+        return "";
+    }
+    SIG_LEFT_STYLING_WIDTH = "";
     return checked.map(cb => {
       const url = cb.dataset.url;
       const name = cb.dataset.name;
@@ -215,10 +221,7 @@
 
     return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Arial, Helvetica, sans-serif; color: #222222; font-size: 14px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
   <tr>
-    <td width="${logoSize}" style="vertical-align: middle; padding-right: 16px; width: ${logoSize}px;">
-      <img src="${logoUrl}" alt="${company}" width="${logoSize}" height="${logoSize}" style="display: block; width: ${logoSize}px; height: ${logoSize}px; border: 0; outline: none; text-decoration: none;">
-    </td>
-    <td style="vertical-align: middle; border-left: 2px solid #222222; padding-left: 16px;">
+    <td style="${SIG_LEFT_STYLING_WIDTH} vertical-align: middle; border-right: 2px solid #222222; padding-right: 16px;">
       <div style="font-size: 15px; font-weight: bold; color: #222222;">${name}${pronounsHtml}</div>
       <div style="margin-top: 6px; color: #222222;">
         <strong>${company}</strong><br>
@@ -226,6 +229,9 @@
         <a href="tel:${phoneLink}" style="color: #222222; text-decoration: none;">${phone}</a>
       </div>
       ${taglineHtml}
+    </td>
+    <td width="${logoSize}" style="vertical-align: middle; padding-left: 16px; width: ${logoSize}px;">
+      <img src="${logoUrl}" alt="${company}" width="${logoSize}" height="${logoSize}" style="display: block; width: ${logoSize}px; height: ${logoSize}px; border: 0; outline: none; text-decoration: none;">
     </td>
   </tr>${bannerRows}
 </table>`;
