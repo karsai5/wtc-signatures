@@ -57,6 +57,12 @@
   input:focus { outline: 2px solid #5b9dd9; border-color: #5b9dd9; }
   .row { display: flex; gap: 12px; }
   .row > div { flex: 1; }
+  .signature-section {
+    margin-bottom: 24px;
+  }
+  .signature-section:last-of-type {
+    margin-bottom: 0;
+  }
   .preview-frame {
     border: 1px dashed var(--border);
     padding: 16px;
@@ -74,6 +80,20 @@
     border-radius: 4px;
     resize: vertical;
   }
+  details.source-panel {
+    margin-top: 20px;
+    padding-top: 14px;
+  }
+  details.source-panel summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  details.source-panel summary:hover { color: var(--accent); }
+  details.source-panel textarea { margin-top: 12px; }
   .buttons { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   button {
     padding: 8px 14px;
@@ -124,6 +144,9 @@
     <label for="company">Company</label>
     <input type="text" id="company" value="Willoughby Theatre Company">
 
+    <label for="website">Website</label>
+    <input type="url" id="website" value="https://linktr.ee/WilloughbyTheatreCo">
+
     <label for="role">Role / Title</label>
     <input type="text" id="role" value="Technical Director">
 
@@ -146,18 +169,38 @@
   </div>
 
   <div class="panel">
-    <h2>Live preview</h2>
-    <div class="preview-frame" id="preview"></div>
+    <div class="signature-section">
+      <h2>Full signature</h2>
+      <div class="preview-frame" id="fullPreview"></div>
 
-    <div class="buttons">
-      <button id="copyRich">Copy signature (rich)</button>
-      <button class="secondary" id="copyHtml">Copy HTML source</button>
-      <span class="toast" id="toast">Copied!</span>
+      <div class="buttons">
+        <button id="copyFullRich">Copy full signature</button>
+        <button class="secondary" id="copyFullHtml">Copy HTML source</button>
+        <span class="toast" id="toast">Copied!</span>
+      </div>
+
+      <details class="source-panel">
+        <summary>HTML source</summary>
+        <textarea id="fullHtmlSource" readonly></textarea>
+        <div class="hint">Paste the rich copy directly into Gmail/Outlook/Apple Mail signature settings. Use the HTML source if your client accepts raw HTML.</div>
+      </details>
     </div>
 
-    <h2 style="margin-top: 20px;">HTML source</h2>
-    <textarea id="htmlSource" readonly></textarea>
-    <div class="hint">Paste the rich copy directly into Gmail/Outlook/Apple Mail signature settings. Use the HTML source if your client accepts raw HTML.</div>
+    <div class="signature-section">
+      <h2>Simple signature</h2>
+      <div class="preview-frame" id="simplePreview"></div>
+
+      <div class="buttons">
+        <button id="copySimpleRich">Copy simple signature</button>
+        <button class="secondary" id="copySimpleHtml">Copy HTML source</button>
+      </div>
+
+      <details class="source-panel">
+        <summary>HTML source</summary>
+        <textarea id="simpleHtmlSource" readonly></textarea>
+        <div class="hint">A lightweight version without mobile number, tagline, or banners.</div>
+      </details>
+    </div>
   </div>
 
 </div>
@@ -167,7 +210,7 @@
   const BANNER_BASE = "https://github.com/karsai5/wtc-signatures/blob/main/banners/";
   const BANNER_SUFFIX = "?raw=true";
   const BANNER_API = "https://api.github.com/repos/karsai5/wtc-signatures/contents/banners";
-  const fields = ["name","pronouns","company","role","phone","phoneLink","tagline","logoSize"];
+  const fields = ["name","pronouns","company","website","role","phone","phoneLink","tagline","logoSize"];
   const $ = id => document.getElementById(id);
 
   function escapeHtml(s) {
@@ -201,10 +244,15 @@
     }).join("");
   }
 
-  function buildSignature() {
+  function getWebsiteDisplay(website) {
+    return website.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+  }
+
+  function buildFullSignature() {
     const name     = escapeHtml($("name").value);
     const pronouns = escapeHtml($("pronouns").value);
     const company  = escapeHtml($("company").value);
+    const website  = escapeHtml($("website").value);
     const role     = escapeHtml($("role").value);
     const phone    = escapeHtml($("phone").value);
     const phoneLink= escapeHtml($("phoneLink").value);
@@ -220,6 +268,10 @@
       ? `<div style="margin-top: 8px; font-style: italic; color: #666666; font-size: 12px;">${tagline}</div>`
       : "";
 
+    const companyHtml = website
+      ? `<a href="${website}" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${company}</strong></a>`
+      : `<strong>${company}</strong>`;
+
     const bannerRows = buildBannerRows();
 
     return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Montserrat, Arial, Helvetica, sans-serif; color: #222222; font-size: 14px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
@@ -227,8 +279,8 @@
     <td style="${SIG_LEFT_STYLING_WIDTH} vertical-align: middle; padding-right: 16px;">
         <div style="font-size: 15px; font-weight: bold; color: #222222;">${name}<span style="font-size: 13px;">${pronounsHtml}</span></div>
       <div style="margin-top: 6px; color: #222222;">
-          <span style="text-transform: uppercase;">${role}</spans> | 
-        <a href="https://linktr.ee/WilloughbyTheatreCo" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${company}</strong></a><br>
+          <span style="text-transform: uppercase;">${role}</span> | 
+        ${companyHtml}<br>
         <a href="tel:${phoneLink}" style="color: #222222; text-decoration: none;">${phone}</a>
       </div>
       ${taglineHtml}
@@ -237,10 +289,41 @@
 </table>`;
   }
 
+  function buildSimpleSignature() {
+    const name = escapeHtml($("name").value);
+    const pronouns = escapeHtml($("pronouns").value);
+    const role = escapeHtml($("role").value);
+    const company  = escapeHtml($("company").value);
+    const website  = escapeHtml($("website").value);
+
+    const pronounsHtml = pronouns
+      ? ` <span style="font-weight: normal; color: #666666;">(${pronouns})</span>`
+      : "";
+
+    const companyHtml = website
+      ? `<a href="${website}" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${company}</strong></a>`
+      : `<strong>${company}</strong>`;
+
+    return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Montserrat, Arial, Helvetica, sans-serif; color: #222222; font-size: 14px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
+  <tr>
+    <td style="${DEFAULT_SIG_LEFT_STYLING_WIDTH} vertical-align: middle; padding-right: 16px;">
+      <div style="font-size: 15px; font-weight: bold; color: #222222;">${name}<span style="font-size: 13px;">${pronounsHtml}</span></div>
+      <div style="margin-top: 6px; color: #222222;">
+        <span style="text-transform: uppercase;">${role}</span> | 
+        ${companyHtml}
+      </div>
+    </td>
+  </tr>
+</table>`;
+  }
+
   function render() {
-    const html = buildSignature();
-    $("preview").innerHTML = html;
-    $("htmlSource").value = html;
+    const fullHtml = buildFullSignature();
+    const simpleHtml = buildSimpleSignature();
+    $("fullPreview").innerHTML = fullHtml;
+    $("fullHtmlSource").value = fullHtml;
+    $("simplePreview").innerHTML = simpleHtml;
+    $("simpleHtmlSource").value = simpleHtml;
   }
 
   async function loadBanners() {
@@ -279,13 +362,13 @@
     showToast._t = setTimeout(() => t.classList.remove("show"), 1500);
   }
 
-  $("copyHtml").addEventListener("click", async () => {
-    await navigator.clipboard.writeText($("htmlSource").value);
+  async function copyHtmlSource(sourceId) {
+    await navigator.clipboard.writeText($(sourceId).value);
     showToast();
-  });
+  }
 
-  $("copyRich").addEventListener("click", async () => {
-    const html = $("htmlSource").value;
+  async function copyRichSignature(sourceId, previewId) {
+    const html = $(sourceId).value;
     // Strip tags for the plain-text fallback
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
@@ -301,7 +384,7 @@
     } catch (e) {
       // Fallback: select the rendered preview and execCommand copy
       const range = document.createRange();
-      range.selectNodeContents($("preview"));
+      range.selectNodeContents($(previewId));
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
@@ -309,7 +392,12 @@
       sel.removeAllRanges();
       showToast();
     }
-  });
+  }
+
+  $("copyFullHtml").addEventListener("click", () => copyHtmlSource("fullHtmlSource"));
+  $("copySimpleHtml").addEventListener("click", () => copyHtmlSource("simpleHtmlSource"));
+  $("copyFullRich").addEventListener("click", () => copyRichSignature("fullHtmlSource", "fullPreview"));
+  $("copySimpleRich").addEventListener("click", () => copyRichSignature("simpleHtmlSource", "simplePreview"));
 </script>
 
 </body>
