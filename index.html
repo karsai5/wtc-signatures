@@ -55,6 +55,7 @@
     font-family: inherit;
   }
   input:focus { outline: 2px solid #5b9dd9; border-color: #5b9dd9; }
+ input:invalid {border: red solid 3px;}
   .row { display: flex; gap: 12px; }
   .row > div { flex: 1; }
   .signature-section {
@@ -141,26 +142,14 @@
     <label for="pronouns">Pronouns</label>
     <input type="text" id="pronouns" value="he/him">
 
-    <label for="company">Company</label>
-    <input type="text" id="company" value="Willoughby Theatre Company">
-
-    <label for="website">Website</label>
-    <input type="url" id="website" value="https://linktr.ee/WilloughbyTheatreCo">
-
     <label for="role">Role / Title</label>
     <input type="text" id="role" value="Technical Director">
 
-    <label for="phone">Phone (display)</label>
-    <input type="tel" id="phone" value="0400 000 000">
-
-    <label for="phoneLink">Phone (tel: link, international format)</label>
-    <input type="tel" id="phoneLink" value="+61400000000">
+    <label for="phone">Phone</label>
+    <input type="tel" id="phone" value="0400000000" pattern="04\s*(?:\d\s*){8}">
 
     <label for="tagline">Tagline / footer line</label>
     <input type="text" id="tagline" value="~ Respectfully making theatre on Gadigal land ~">
-
-    <label for="logoSize">Logo size (px)</label>
-    <input type="number" id="logoSize" value="90" min="40" max="200">
 
     <h2 style="margin-top: 24px;">Banners</h2>
     <div id="banners" class="banners">
@@ -170,7 +159,7 @@
 
   <div class="panel">
     <div class="signature-section">
-      <h2>Full signature</h2>
+      <h2>Signature</h2>
       <div class="preview-frame" id="fullPreview"></div>
 
       <div class="buttons">
@@ -186,8 +175,9 @@
       </details>
     </div>
 
-    <div class="signature-section">
-      <h2>Simple signature</h2>
+    <div class="signature-section" id="simpleSigSection">
+      <h2>Signature without banners</h2>
+      <p>Use this signature for replys or forwards (note: Gmail lets you set different emails for new emails and reply emails. Some email clients do not)</p>
       <div class="preview-frame" id="simplePreview"></div>
 
       <div class="buttons">
@@ -210,7 +200,11 @@
   const BANNER_BASE = "https://github.com/karsai5/wtc-signatures/blob/main/banners/";
   const BANNER_SUFFIX = "?raw=true";
   const BANNER_API = "https://api.github.com/repos/karsai5/wtc-signatures/contents/banners";
-  const fields = ["name","pronouns","company","website","role","phone","phoneLink","tagline","logoSize"];
+
+  const COMPANY_NAME = "Willoughby Theatre Co";
+  const WEBSITE_URL = "https://willoughbytheatreco.com.au/links";
+
+  const fields = ["name","pronouns","role","phone","tagline"];
   const $ = id => document.getElementById(id);
 
   function escapeHtml(s) {
@@ -244,44 +238,40 @@
     }).join("");
   }
 
-  function getWebsiteDisplay(website) {
-    return website.replace(/^https?:\/\//i, "").replace(/\/$/, "");
-  }
-
-  function buildFullSignature() {
+  function buildSignature(withBannerRows = false) {
     const name     = escapeHtml($("name").value);
     const pronouns = escapeHtml($("pronouns").value);
-    const company  = escapeHtml($("company").value);
-    const website  = escapeHtml($("website").value);
     const role     = escapeHtml($("role").value);
-    const phone    = escapeHtml($("phone").value);
-    const phoneLink= escapeHtml($("phoneLink").value);
+    const phone    = escapeHtml($("phone").value).replace(/\D/g, "");
     const tagline  = escapeHtml($("tagline").value);
     const logoUrl  = LOGO_URL;
-    const logoSize = parseInt($("logoSize").value, 10) || 90;
 
     const pronounsHtml = pronouns
-      ? ` <span style="font-weight: normal; color: #666666;">(${pronouns})</span>`
+      ? ` <span style="font-weight: normal; font-style: italic; color: #666666;">${pronouns}</span>`
       : "";
 
-    const taglineHtml = tagline
+    const taglineHtml = (tagline)
       ? `<div style="margin-top: 8px; font-style: italic; color: #666666; font-size: 12px;">${tagline}</div>`
       : "";
 
-    const companyHtml = website
-      ? `<a href="${website}" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${company}</strong></a>`
-      : `<strong>${company}</strong>`;
+    let phoneHtml = "";
+    if (phone && /04\d{8}/.test(phone)) {
+        const phoneLink = phone.replace("04", "+614");
+        phoneHtml = `Phone: <a href="tel:${phoneLink}" style="color: #222222; text-decoration: none;">${phone}</a>`;
+    }
 
-    const bannerRows = buildBannerRows();
+    const companyHtml = `<a href="${WEBSITE_URL}" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${COMPANY_NAME}</strong></a>`
+    const roleHtml = role ? `<span style="text-transform: uppercase;">${role}</span> |` : "";
 
+    const bannerRows = withBannerRows ? buildBannerRows() : "";
     return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Montserrat, Arial, Helvetica, sans-serif; color: #222222; font-size: 13px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
   <tr>
     <td style="${SIG_LEFT_STYLING_WIDTH} vertical-align: middle; padding-right: 16px;">
         <div style="font-size: 13px; font-weight: bold; color: #222222;">${name}<span style="font-size: 11px;">${pronounsHtml}</span></div>
       <div style="margin-top: 6px; color: #222222;">
-          <span style="text-transform: uppercase;">${role}</span> | 
+          ${roleHtml}
         ${companyHtml}<br>
-        Phone: <a href="tel:${phoneLink}" style="color: #222222; text-decoration: none;">${phone}</a>
+        ${phoneHtml}
       </div>
       ${taglineHtml}
     </td>
@@ -289,41 +279,15 @@
 </table>`;
   }
 
-  function buildSimpleSignature() {
-    const name = escapeHtml($("name").value);
-    const pronouns = escapeHtml($("pronouns").value);
-    const role = escapeHtml($("role").value);
-    const company  = escapeHtml($("company").value);
-    const website  = escapeHtml($("website").value);
-
-    const pronounsHtml = pronouns
-      ? ` <span style="font-weight: normal; color: #666666;">(${pronouns})</span>`
-      : "";
-
-    const companyHtml = website
-      ? `<a href="${website}" style="color: #000000; text-transform: uppercase;" target="_blank"><strong>${company}</strong></a>`
-      : `<strong>${company}</strong>`;
-
-    return `<table cellpadding="0" cellspacing="0" border="0" width="${SIG_WIDTH}" style="font-family: Montserrat, Arial, Helvetica, sans-serif; color: #222222; font-size: 13px; line-height: 1.4; width: ${SIG_WIDTH}px; max-width: 100%;">
-  <tr>
-    <td style="${DEFAULT_SIG_LEFT_STYLING_WIDTH} vertical-align: middle; padding-right: 16px;">
-      <div style="font-size: 13px; font-weight: bold; color: #222222;">${name}<span style="font-size: 11px;">${pronounsHtml}</span></div>
-      <div style="margin-top: 6px; color: #222222;">
-        <span style="text-transform: uppercase;">${role}</span> | 
-        ${companyHtml}
-      </div>
-    </td>
-  </tr>
-</table>`;
-  }
-
   function render() {
-    const fullHtml = buildFullSignature();
-    const simpleHtml = buildSimpleSignature();
+    const fullHtml = buildSignature(true);
+    const simpleHtml = buildSignature();
     $("fullPreview").innerHTML = fullHtml;
     $("fullHtmlSource").value = fullHtml;
     $("simplePreview").innerHTML = simpleHtml;
     $("simpleHtmlSource").value = simpleHtml;
+    const hasBanners = !!document.querySelector(".banner-checkbox:checked");
+    $("simpleSigSection").style.display = hasBanners ? "" : "none";
   }
 
   async function loadBanners() {
